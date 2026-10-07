@@ -178,7 +178,7 @@ namespace WikiFunctions.Disambiguation
                 txtViewer.Select(Match.Index - PosStart, Match.Length);
                 txtViewer.SelectionFont = new System.Drawing.Font(txtViewer.SelectionFont.FontFamily,
                     txtViewer.SelectionFont.Size, System.Drawing.FontStyle.Bold);
-                txtViewer.SelectionBackColor = System.Drawing.Color.FromArgb(0xFFD754);
+                txtViewer.SelectionBackColor = Theming.Theme.Current.Highlight;
                 txtViewer.Select(SurroundingsStart - PosStart, 0);
                 txtViewer.ScrollToCaret();
                 txtViewer.Select(0, 0);

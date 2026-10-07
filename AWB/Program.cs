@@ -38,6 +38,7 @@ namespace AutoWikiBrowser
                 System.Threading.Thread.CurrentThread.Name = "Main thread";
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
+                WikiFunctions.Theming.Theme.Initialize();
                 Application.ThreadException += ApplicationThreadException;
 
                 if (Globals.UsingMono)

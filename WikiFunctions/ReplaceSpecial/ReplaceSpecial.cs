@@ -722,7 +722,7 @@ namespace WikiFunctions.ReplaceSpecial
 
         private static void SetNodeColour(TreeNode node, IRule rule)
         {
-            node.BackColor = rule.enabled_ ? Color.White : Color.Red;
+            node.BackColor = rule.enabled_ ? Theming.Theme.Current.Input : Theming.Theme.Current.ErrorHighlight;
         }
 
         private void ReplaceSpecial_Load(object sender, EventArgs e)

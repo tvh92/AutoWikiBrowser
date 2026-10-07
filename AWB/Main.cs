@@ -45,6 +45,7 @@ using WikiFunctions.Properties;
 using WikiFunctions.Controls;
 using WikiFunctions.Background;
 using WikiFunctions.Controls.Lists;
+using WikiFunctions.Theming;
 using AutoWikiBrowser.Plugins;
 using ThreadState = System.Threading.ThreadState;
 
@@ -117,6 +118,30 @@ namespace AutoWikiBrowser
         { get; private set; }
 
         #region Constructor and MainForm load/resize
+        /// <summary>
+        /// Adds View > Theme with the light/dark/system/classic choices
+        /// </summary>
+        private void AddThemeMenu()
+        {
+            var themeMenu = new ToolStripMenuItem("T&heme");
+            foreach (ThemeMode mode in new[] { ThemeMode.System, ThemeMode.Light, ThemeMode.Dark, ThemeMode.Classic })
+            {
+                string text = mode == ThemeMode.System ? "Use &Windows setting" : "&" + mode;
+                var item = new ToolStripMenuItem(text) { Tag = mode };
+                item.Click += (sender, e) => Theme.SetMode((ThemeMode)((ToolStripItem)sender).Tag);
+                themeMenu.DropDownItems.Add(item);
+            }
+
+            themeMenu.DropDownOpening += (sender, e) =>
+            {
+                foreach (ToolStripMenuItem item in themeMenu.DropDownItems)
+                    item.Checked = (ThemeMode)item.Tag == Theme.Mode;
+            };
+
+            viewToolStripMenuItem.DropDownItems.Add(new ToolStripSeparator());
+            viewToolStripMenuItem.DropDownItems.Add(themeMenu);
+        }
+
         public MainForm()
         {
             CheckSettings();
@@ -132,6 +157,7 @@ namespace AutoWikiBrowser
             SplashScreen.SetProgress(1);
 
             InitializeComponent();
+            AddThemeMenu();
 
             SplashScreen.SetProgress(5);
             try
@@ -385,7 +411,7 @@ namespace AutoWikiBrowser
 
                 if ((Updater.Result & Updater.AWBEnabledStatus.Error) == Updater.AWBEnabledStatus.Error)
                 {
-                    lblUserName.BackColor = Color.Red;
+                    lblUserName.BackColor = Theme.Current.Danger;
                     MessageBox.Show(this,
                                     "Cannot load version check page from Wikipedia. Please verify that you're connected to Internet.",
                                     "Error",
@@ -2339,7 +2365,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
 
             if (TheSession.User.Notifications > 0)
             {
-                lblUserNotifications.BackColor = Color.Tomato;
+                lblUserNotifications.BackColor = Theme.Current.Warning;
                 lblUserNotifications.Font = new Font(lblUserNotifications.Font, FontStyle.Bold);
             }
             else
@@ -2364,13 +2390,13 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
 
             if (TheSession.Status == WikiStatusResult.Registered)
             {
-                lblUserName.BackColor = Color.Green;
+                lblUserName.BackColor = Theme.Current.Success;
                 lblUserName.ForeColor = Color.White;
                 btnStart.Enabled = true;
             }
             else
             {
-                lblUserName.BackColor = Color.Red;
+                lblUserName.BackColor = Theme.Current.Danger;
                 btnStart.Enabled = false;
             }
         }
@@ -2713,7 +2739,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
 
         private void OldVersion()
         {
-            lblUserName.BackColor = Color.Red;
+            lblUserName.BackColor = Theme.Current.Danger;
             DisableButtons();
 
             switch (
@@ -3082,7 +3108,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             if (highlightAllFindToolStripMenuItem.Checked)
             {
                 txtEdit.SetEditBoxSelection(txtEdit.SelectionStart-1, 1);
-                txtEdit.SelectionBackColor = Color.White;
+                txtEdit.SelectionBackColor = Theme.Current.Input;
                 txtEdit.SetEditBoxSelection(txtEdit.SelectionStart+1, 1);
                 txtEdit.DeselectAll();
             }
@@ -3453,7 +3479,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
 
             // if there are find matches, colour the Find button yellow
             if (btnFind.Enabled && txtEdit.FindAll(txtFind.Text, chkFindRegex.Checked, chkFindCaseSensitive.Checked, TheArticle.Name).Any())
-                btnFind.BackColor = Color.Yellow;
+                btnFind.BackColor = Theme.Current.Highlight;
             else
                 btnFind.BackColor = SystemColors.ButtonFace;
         }
@@ -3523,7 +3549,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             if (_intTimer < nudBotSpeed.Value)
             {
                 _intTimer++;
-                lblBotTimer.BackColor = (_intTimer == 1) ? Color.Red : DefaultBackColor;
+                lblBotTimer.BackColor = (_intTimer == 1) ? Theme.Current.Danger : Color.Empty;
             }
             else
             {
@@ -4242,7 +4268,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
 
             // clear any red from previous alerts to avoid entire edit box being coloured red after reparse
             txtEdit.SelectAll();
-            txtEdit.SelectionBackColor = Color.White;
+            txtEdit.SelectionBackColor = Theme.Current.Input;
 
             if (highlightAllFindToolStripMenuItem.Checked)
                 HighlightAllFind();
@@ -5851,13 +5877,13 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             int newlinesToIndex = WikiRegexes.Newline.Matches(txtEdit.Text.Substring(0, index)).Count;
             int newlinesInSelection = WikiRegexes.Newline.Matches(txtEdit.Text.Substring(index, length)).Count;
             txtEdit.SetEditBoxSelection(index - newlinesToIndex, length - newlinesInSelection, false);
-            txtEdit.SelectionBackColor = Color.Tomato;
+            txtEdit.SelectionBackColor = Theme.Current.ErrorHighlight;
         }
 
         private void YellowSelection(int index, int length)
         {
             txtEdit.SetEditBoxSelection(index, length);
-            txtEdit.SelectionBackColor = Color.Yellow;
+            txtEdit.SelectionBackColor = Theme.Current.Highlight;
         }
 
         private void HighlightAllFind()

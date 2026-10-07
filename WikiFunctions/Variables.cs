@@ -105,8 +105,6 @@ namespace WikiFunctions
             Protocol = "http://";
             NotificationsEnabled = true;
             UnicodeCategoryCollation = false;
-
-            DarkModeTheme.Initialize();
         }
 
         /// <summary>

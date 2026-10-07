@@ -27,6 +27,7 @@ using System.CodeDom.Compiler;
 using WikiFunctions.Plugin;
 using WikiFunctions;
 using WikiFunctions.CustomModules;
+using WikiFunctions.Theming;
 
 namespace AutoWikiBrowser
 {
@@ -119,13 +120,15 @@ namespace AutoWikiBrowser
                 if (value == null)
                 {
                     lblStatus.Text = "No module loaded";
-                    lblStatus.BackColor = Color.Orange;
+                    lblStatus.BackColor = Theme.Current.Warning;
+                    lblStatus.ForeColor = ThemePalette.ReadableTextOn(lblStatus.BackColor);
                     lblBuilt.Text = BuiltPrefix + "n/a";
                 }
                 else
                 {
                     lblStatus.Text = "Module compiled and loaded";
-                    lblStatus.BackColor = Color.LightGreen;
+                    lblStatus.BackColor = Theme.Current.Success;
+                    lblStatus.ForeColor = ThemePalette.ReadableTextOn(lblStatus.BackColor);
                     lblBuilt.Text = BuiltPrefix + DateTime.Now;
                 }
             }

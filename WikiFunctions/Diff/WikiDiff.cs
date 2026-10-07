@@ -560,6 +560,42 @@ table.diff td div {
 "; }
         }
 
+        /// <summary>
+        /// Overrides for <see cref="DefaultStyles"/> when AWB uses its dark theme
+        /// </summary>
+        private const string DarkStyles = @"
+html, body, table.diff, td.diff-otitle, td.diff-ntitle {
+    background-color: #1c1c1c;
+    color: #e8e8e8;
+}
+
+td.diff-context {
+    background: #262626;
+    color: #c8c8c8;
+    border-color: #383838;
+}
+
+td.diff-addedline {
+    border-color: #2f6da8;
+}
+
+td.diff-deletedline {
+    border-color: #a8862f;
+}
+
+td.diff-addedline .diffchange {
+    background: #1f4466;
+}
+
+td.diff-deletedline .diffchange {
+    background: #5c4a1c;
+}
+
+a {
+    color: #78b4ff;
+}
+";
+
         private static string CustomStyles;
 
         /// <summary>
@@ -586,6 +622,9 @@ table.diff td div {
                     CustomStyles = "";
                 }
             }
+
+            if (styles == DefaultStyles && Theming.Theme.IsDark)
+                styles += DarkStyles + "html, body {" + Theming.ControlStyler.DarkScrollbars + "}";
 
             return "<style type='text/css'>" + styles + "</style>";
         }

@@ -1451,7 +1451,7 @@ namespace WikiFunctions.Controls.Lists
             if (!selected)
                 e = new DrawItemEventArgs(e.Graphics, e.Font, e.Bounds, e.Index,
                                           e.State,
-                                          e.ForeColor, (a.PreProcessed) ? Color.GreenYellow : e.BackColor);
+                                          e.ForeColor, (a.PreProcessed) ? Theming.Theme.Current.Processed : e.BackColor);
 
             e.DrawBackground();
 

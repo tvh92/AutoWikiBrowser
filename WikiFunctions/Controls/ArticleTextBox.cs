@@ -247,7 +247,7 @@ namespace WikiFunctions.Controls
         {
             // reset background colour to avoid issues on re-parse
             SetEditBoxSelection(0, RawText.Length);
-            SelectionBackColor = Color.White;
+            SelectionBackColor = Theming.Theme.Current.Input;
                         
             Font currentFont = SelectionFont;
             Font boldFont = new Font(currentFont.FontFamily, currentFont.Size, FontStyle.Bold);
@@ -265,14 +265,14 @@ namespace WikiFunctions.Controls
             foreach (Match m in WikiRegexes.NestedTemplates.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionBackColor = Color.LightGray;
+                SelectionBackColor = Theming.Theme.Current.SyntaxBlock;
             }
 
             // * items grey background
             foreach (Match m in WikiRegexes.StarRows.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionBackColor = Color.LightGray;
+                SelectionBackColor = Theming.Theme.Current.SyntaxBlock;
 
                 SetEditBoxSelection(m.Groups[1].Index, m.Groups[1].Length);
                 SelectionFont = boldFont;
@@ -282,21 +282,21 @@ namespace WikiFunctions.Controls
             foreach (Match m in WikiRegexes.TemplateName.Matches(RawText))
             {
                 SetEditBoxSelection(m.Groups[1].Index, m.Groups[1].Length);
-                SelectionColor = Color.DarkBlue;
+                SelectionColor = Theming.Theme.Current.SyntaxTemplateName;
             }
 
             // refs grey background
             foreach (Match m in WikiRegexes.Refs.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionBackColor = Color.LightGray;
+                SelectionBackColor = Theming.Theme.Current.SyntaxBlock;
             }
 
             // external links grey background, blue bold
             foreach (Match m in WikiRegexes.ExternalLinks.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionColor = Color.Blue;
+                SelectionColor = Theming.Theme.Current.SyntaxLink;
                 SelectionFont = boldFont;
             }
 
@@ -304,7 +304,7 @@ namespace WikiFunctions.Controls
             foreach (Match m in WikiRegexes.FileNamespaceLink.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionBackColor = Color.LightGreen;
+                SelectionBackColor = Theming.Theme.Current.SyntaxFile;
             }
 
             // italics
@@ -340,18 +340,18 @@ namespace WikiFunctions.Controls
             foreach (Match m in WikiRegexes.PipedWikiLink.Matches(RawText))
             {
                 SetEditBoxSelection(m.Groups[2].Index, m.Groups[2].Length);
-                SelectionColor = Color.Blue;
+                SelectionColor = Theming.Theme.Current.SyntaxLink;
                 SelectionFont = boldFont;
 
                 SetEditBoxSelection(m.Groups[1].Index, m.Groups[1].Length);
-                SelectionColor = Color.Blue;
+                SelectionColor = Theming.Theme.Current.SyntaxLink;
             }
 
             // unpiped wikilinks in blue and bold
             foreach (Match m in WikiRegexes.UnPipedWikiLink.Matches(RawText))
             {
                 SetEditBoxSelection(m.Groups[1].Index, m.Groups[1].Length);
-                SelectionColor = Color.Blue;
+                SelectionColor = Theming.Theme.Current.SyntaxLink;
                 SelectionFont = boldFont;
             }
 
@@ -359,7 +359,7 @@ namespace WikiFunctions.Controls
             foreach (Match m in WikiRegexes.WikiLinksOnlyPlusWord.Matches(RawText))
             {
                 SetEditBoxSelection(m.Groups[1].Index, m.Groups[1].Length);
-                SelectionColor = Color.Blue;
+                SelectionColor = Theming.Theme.Current.SyntaxLink;
                 SelectionFont = boldFont;
             }
 
@@ -367,33 +367,33 @@ namespace WikiFunctions.Controls
             foreach (Match m in WikiRegexes.Category.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionBackColor = Color.LightGray;
+                SelectionBackColor = Theming.Theme.Current.SyntaxBlock;
                 SelectionFont = currentFont;
-                SelectionColor = Color.Black;
+                SelectionColor = Theming.Theme.Current.Text;
 
                 SetEditBoxSelection(m.Groups[1].Index, m.Groups[1].Length);
-                SelectionColor = Color.Blue;
+                SelectionColor = Theming.Theme.Current.SyntaxLink;
             }
 
             // interwikis dark grey background
             foreach (Match m in WikiRegexes.PossibleInterwikis.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionBackColor = Color.Gray;
+                SelectionBackColor = Theming.Theme.Current.SyntaxInterwiki;
                 SelectionFont = currentFont;
 
                 SetEditBoxSelection(m.Groups[2].Index, m.Groups[2].Length);
-                SelectionColor = Color.Blue;
+                SelectionColor = Theming.Theme.Current.SyntaxLink;
 
                 SetEditBoxSelection(m.Groups[1].Index, m.Groups[1].Length);
-                SelectionColor = Color.Black;
+                SelectionColor = Theming.Theme.Current.Text;
             }
 
             // comments dark orange background
             foreach (Match m in WikiRegexes.Comments.Matches(RawText))
             {
                 SetEditBoxSelection(m.Index, m.Length);
-                SelectionBackColor = Color.PaleGoldenrod;
+                SelectionBackColor = Theming.Theme.Current.SyntaxComment;
             }
         }
     }

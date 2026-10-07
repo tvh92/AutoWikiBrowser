@@ -199,12 +199,12 @@ namespace WikiFunctions.Controls
 
             if ((Typo.Total == Typo.SelfMatches) && !IsYellow)
             {
-                BackColor = Color.Yellow;
+                BackColor = Theming.Theme.Current.Highlight;
                 IsYellow = true;
             }
             else if (IsYellow)
             {
-                BackColor = Color.White;
+                BackColor = Theming.Theme.Current.Input;
                 IsYellow = false;
             }
         }
