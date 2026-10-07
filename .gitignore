@@ -4,3 +4,4 @@ packages/
 *.user
 .vs/
 build/
+WikiFunctions/SvnInfo.cs
