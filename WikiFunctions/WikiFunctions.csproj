@@ -110,6 +110,7 @@
     <Compile Include="Diff\Diff.cs" />
     <Compile Include="Diff\Patch.cs" />
     <Compile Include="Diff\UnifiedDiff.cs" />
+    <Compile Include="DarkModeTheme.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Globals.cs" />
     <Compile Include="KeyComparer.cs" />
