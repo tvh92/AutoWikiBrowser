@@ -29,7 +29,6 @@ using System.IO;
 
 namespace WikiFunctions
 {
-    //[PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
     public class ObjectCache : IDisposable
     {
         public ObjectCache()

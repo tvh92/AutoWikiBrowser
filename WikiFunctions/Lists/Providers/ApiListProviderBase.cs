@@ -18,6 +18,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Web;
 using System.Xml;
 using System.IO;
@@ -77,8 +78,18 @@ namespace WikiFunctions.Lists.Providers
 
             while (list.Count + haveSoFar < Limit)
             {
-                // API continuation needs updating https://phabricator.wikimedia.org/T104684
-                string text = editor.QueryApi(newUrl + "&rawcontinue=1" + postfix); // HACK: Hacky hack hack
+                string text;
+                try
+                {
+                    // API continuation needs updating https://phabricator.wikimedia.org/T104684
+                    text = editor.QueryApi(newUrl + "&rawcontinue=1" + postfix); // HACK: Hacky hack hack
+                }
+                catch (WebException webex) {
+                    if (Tools.HandleHttpException(webex)) {
+                        continue;
+                    }
+                    throw;  // Or let it bubble up to a generic handler
+                }
 
                 XmlTextReader xml = new XmlTextReader(new StringReader(text));
                 xml.MoveToContent();
@@ -106,7 +117,7 @@ namespace WikiFunctions.Lists.Providers
                             continue;
 
                         int ns;
-                        int.TryParse(xml.GetAttribute("ns"), out ns);
+                        bool nsvalid = int.TryParse(xml.GetAttribute("ns"), out ns);
                         string name = xml.GetAttribute(WantedAttribute);
 
                         if (string.IsNullOrEmpty(name))
@@ -115,7 +126,7 @@ namespace WikiFunctions.Lists.Providers
                             break;
                         }
 
-                        list.Add(ns >= 0 ? new Article(name, ns) : new Article(name));
+                        list.Add(nsvalid && ns >= 0 ? new Article(name, ns) : new Article(name));
                     }
                 }
                 if (string.IsNullOrEmpty(postfix)) break;

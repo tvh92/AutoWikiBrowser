@@ -33,7 +33,6 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Diagnostics;
 using System.Globalization;
-using System.Security.Permissions;
 using System.Web;
 using System.Net;
 using System.Linq;
@@ -55,7 +54,6 @@ namespace AutoWikiBrowser
     // TODO:Move regexes declared in method bodies (if not dynamic based on article title, etc), into class body
     // TODO:Move any Regexes to WikiRegexes as required
 
-    [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
     public sealed partial class MainForm : Form, IAutoWikiBrowser
     { // this class needs to be public, otherwise we get an exception which recommends setting ComVisibleAttribute to true (which we've already done)
         #region Fields
@@ -704,14 +702,23 @@ namespace AutoWikiBrowser
             }
             else if (ex is WebException || (ex is IOException && ex.Message.Contains("0x2746")))
             {
-                // some 404 error or similar, or "Unable to write data to the transport connection: Unknown error (0x2746)"
+                // Some HTTP error, often retryable, or:
+                // "Unable to write data to the transport connection: Unknown error (0x2746)"
                 StatusLabelText = ex.Message;
                 if (Tools.WriteDebugEnabled)
                     Tools.WriteTextFile(ex.Message, "Log.txt", true);
-                // Sometimes (as with 429 Too Many Requests) there will be a specific delay in response headers.
-                if (ex is WebException webex && webex.Response is HttpWebResponse resp &&
-                        int.TryParse(resp.GetResponseHeader("Retry-After"), out int restart) && restart > 0)
-                    StartDelayedRestartTimer(restart + 1);  // Allow for timer slop
+                // Sometimes there will be a specific delay requested.
+                // RFC 2616 and 6585 say it could be 429 (Too Many Requests), 503 (Service Unavailable) or 3xx.
+                // CURRENTLY mediawiki uses 429 and 503, and seconds not HTTP-date.
+                // Retry success is still not guaranteed after waiting the specified time.
+                if (ex is WebException webex && webex.Response is HttpWebResponse resp)
+                {
+                    int restart = Tools.ParseRetry(resp);
+                    if (restart >= 0)
+                        StartDelayedRestartTimer(restart);
+                    else
+                        StartDelayedRestartTimer();
+                }
                 else
                     StartDelayedRestartTimer();
             }
@@ -3459,7 +3466,8 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
         private void DelayedRestart(object sender, EventArgs e)
         {
             StopDelayedAutoSaveTimer();
-            StatusLabelText = "Restarting in " + _startInSeconds;
+            StatusLabelText = "Restarting in " +
+                (_startInSeconds > 60 ? "over a minute" : _startInSeconds.ToString());
 
             if (_startInSeconds == 0)
             {
@@ -3472,17 +3480,18 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
 
         private void StartDelayedRestartTimer()
         {
-            //increase the restart delay each time, this is decreased by 1 on each successfull save
+            //increase the restart delay each time; this is decreased by 1 on each successful save
             int delay = _restartDelay + 5;
             if (delay > 60)
                 delay = 60;
 
+            _restartDelay = delay;
             StartDelayedRestartTimer(delay);
         }
 
         private void StartDelayedRestartTimer(int delay)
         {
-            _startInSeconds = _restartDelay = delay;
+            _startInSeconds = delay;
             Ticker += DelayedRestart;
         }
 

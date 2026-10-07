@@ -154,6 +154,15 @@ namespace WikiFunctions.API
         }
 
         /// <summary>
+        /// Returns whether the user can read notifications, which by default bot accounts don't
+        /// </summary>
+        /// <returns></returns>
+        public bool HasReadNotificationsRight()
+        {
+            return HasRight("echo-read-notifications");
+        }
+
+        /// <summary>
         /// Creates a UserInfo class from an meta=userinfo XML
         /// </summary>
         /// <param name="xml">XML document to process. Must be already checked for error status by 

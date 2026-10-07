@@ -315,7 +315,7 @@ namespace WikiFunctions.API
                 {
                     request.Add("meta", "userinfo");
                 }
-                if (Variables.NotificationsEnabled)
+                if (Variables.NotificationsEnabled && User.HasReadNotificationsRight())
                 {
                     request["meta"] += "|notifications";
                 }
@@ -572,7 +572,17 @@ namespace WikiFunctions.API
         public string HttpGet(string url)
         {
             Tools.WriteDebug("ApiEdit::HttpGet", url);
-            return GetResponseString(CreateRequest(url));
+            while (true) {
+                try
+                {
+                    return GetResponseString(CreateRequest(url));
+                }
+                catch (WebException ex)
+                {
+                    if (!Tools.HandleHttpException(ex))
+                        throw;
+                }
+            }
         }
 
         #endregion
@@ -716,15 +726,20 @@ namespace WikiFunctions.API
             string status = (xr.GetAttribute("status") ?? "").ToUpper();
             if (status == "PASS")
                 return;
-            string message = xr.GetAttribute("message") ?? "";
+
+            // Handle 2FA using EmailAuth.
+            // OATHAuth should work the same way, using the OATHToken parameter, but that's not tested.
+            if (status != "UI")
+            {
+                throw new LoginException(this, status);
+            }
             // Makes the (unverified) assumption that the email will be in parens in all localizations
-            Match emailMatch = Regex.Match(message, @"\(.+?@.+?\)");
-            if (status != "UI" || !emailMatch.Success)
+            Match emailMatch = Regex.Match(xr.GetAttribute("message") ?? "", @"\(.+?@.+?\)");
+            if (!emailMatch.Success)
             {
                 throw new LoginException(this, status);
             }
 
-            // Handle 2FA. For now, only EmailAuth is supported (until we can test OATHAuth).
             postparams.Clear();
             result = HttpPost(
                 new Dictionary<string, string>
@@ -775,10 +790,11 @@ namespace WikiFunctions.API
 
                 // If status is UI (user entered the wrong code) we could loop back and try again,
                 // but there's a danger of getting caught in a loop.
-                // Also, OATHAuth should work the same way, using the OATHToken parameter, but that's not tested.
+                // The "message" attribute will be more specific, but in the server's language,
+                // unlike most of the AWB UI. So fall through to the generic exception.
             }
 
-            throw new LoginException(this, "Verification failed - " + status);
+            throw new LoginException(this, status);
         }
 
         private static void ClientLoginValidator(object sender, InputBoxValidatingArgs e)
@@ -1664,7 +1680,8 @@ namespace WikiFunctions.API
                         {
                             Variables.NotificationsEnabled = false;
                         }
-                        else if (childNode.InnerText.Contains("The parameter \"intoken\" has been deprecated."))
+                        else if (childNode.InnerText.Contains("The parameter \"intoken\" has been deprecated.") ||
+                                 childNode.InnerText.Contains("Unrecognized parameter: intoken."))
                         {
                             UseInToken = false;
                         }

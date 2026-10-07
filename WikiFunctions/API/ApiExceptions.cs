@@ -204,6 +204,8 @@ namespace WikiFunctions.API
                         //see https://www.mediawiki.org/wiki/API:Login#Throttling
                 case "blocked":
                     return "User is blocked";
+                case "ui":
+                    return "Failure during two-factor authentication";
                 default:
                     return code;
             }
