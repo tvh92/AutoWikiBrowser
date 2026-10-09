@@ -36,11 +36,31 @@ namespace WikiFunctions.Theming
             return Hooked.TryGetValue(control, out _);
         }
 
-        /// <param name="force">Restyle even if already styled (after a theme switch)</param>
+        /// <param name="force">Restyle even if already styled (after a theme or text size change)</param>
         internal static void Style(Control root, bool force)
         {
             if (root.IsDisposed || (!force && IsStyled(root)))
                 return;
+
+            var form = root as Form;
+            SizeF oldDims = SizeF.Empty;
+            Size oldSize = Size.Empty;
+            Point oldCenter = Point.Empty;
+            List<SplitterState> splitters = null;
+
+            if (form != null)
+            {
+                PrepareAutoScale(form);
+                oldDims = form.CurrentAutoScaleDimensions;
+                oldSize = form.Size;
+                oldCenter = new Point(form.Left + form.Width / 2, form.Top + form.Height / 2);
+                splitters = new List<SplitterState>();
+                CollectSplitters(form, splitters);
+
+                // The form's font must change while layout is NOT suspended: WinForms skips
+                // font-based autoscaling of a suspended form
+                StyleFont(form);
+            }
 
             root.SuspendLayout();
             try
@@ -51,6 +71,10 @@ namespace WikiFunctions.Theming
             {
                 root.ResumeLayout(true);
             }
+
+            if (form != null)
+                FinishAutoScale(form, oldDims, oldSize, oldCenter, splitters);
+
             root.Invalidate(true);
         }
 
@@ -98,24 +122,205 @@ namespace WikiFunctions.Theming
             }
         }
 
+        #region Text size
+
+        private static readonly ConditionalWeakTable<Control, Font> BaseFonts =
+            new ConditionalWeakTable<Control, Font>();
+        private static readonly ConditionalWeakTable<Form, StrongBox<SizeF>> LayoutScales =
+            new ConditionalWeakTable<Form, StrongBox<SizeF>>();
+        private static readonly ConditionalWeakTable<Form, object> KeepSizeForms =
+            new ConditionalWeakTable<Form, object>();
+        private static readonly ConditionalWeakTable<ToolStrip, object> BaseImageSizes =
+            new ConditionalWeakTable<ToolStrip, object>();
+
+        private sealed class SplitterState
+        {
+            internal SplitContainer Split;
+            internal int Panel1;
+            internal int Panel2;
+            internal int Min1;
+            internal int Min2;
+        }
+
+        internal static void KeepSize(Form form)
+        {
+            if (!KeepSizeForms.TryGetValue(form, out _))
+                KeepSizeForms.Add(form, new object());
+        }
+
+        internal static SizeF LayoutScale(Control control)
+        {
+            Form form = control as Form ?? control?.FindForm();
+            return form != null && LayoutScales.TryGetValue(form, out StrongBox<SizeF> scale)
+                ? scale.Value
+                : new SizeF(1, 1);
+        }
+
         /// <summary>
-        /// Replaces MS Sans Serif (the WinForms default) with Segoe UI at the same size,
-        /// which keeps existing fixed layouts intact
+        /// Lets WinForms scale the window's layout from its font: changing the font then resizes
+        /// and moves every control in proportion, as on a high-DPI screen. Nested containers are
+        /// set to inherit so they are scaled once, by the form, rather than twice.
+        /// </summary>
+        private static void PrepareAutoScale(Form form)
+        {
+            SetChildContainersInherit(form);
+            if (form.AutoScaleMode != AutoScaleMode.Font)
+                form.AutoScaleMode = AutoScaleMode.Font;
+            form.AutoScaleDimensions = form.CurrentAutoScaleDimensions;
+        }
+
+        private static void SetChildContainersInherit(Control parent)
+        {
+            foreach (Control child in parent.Controls)
+            {
+                if (child is ContainerControl container && !(child is Form) &&
+                    container.AutoScaleMode != AutoScaleMode.Inherit)
+                    container.AutoScaleMode = AutoScaleMode.Inherit;
+                SetChildContainersInherit(child);
+            }
+        }
+
+        private static void CollectSplitters(Control parent, List<SplitterState> splitters)
+        {
+            foreach (Control child in parent.Controls)
+            {
+                if (child is SplitContainer split)
+                {
+                    splitters.Add(new SplitterState
+                    {
+                        Split = split,
+                        Panel1 = split.SplitterDistance,
+                        Panel2 = Length(split) - split.SplitterDistance - split.SplitterWidth,
+                        Min1 = split.Panel1MinSize,
+                        Min2 = split.Panel2MinSize
+                    });
+                }
+                CollectSplitters(child, splitters);
+            }
+        }
+
+        private static int Length(SplitContainer split)
+        {
+            return split.Orientation == Orientation.Vertical ? split.Width : split.Height;
+        }
+
+        private static void FinishAutoScale(Form form, SizeF oldDims, Size oldSize, Point oldCenter,
+            List<SplitterState> splitters)
+        {
+            SizeF newDims = form.CurrentAutoScaleDimensions;
+            if (oldDims.Width <= 0 || oldDims.Height <= 0 || newDims == oldDims)
+            {
+                if (!LayoutScales.TryGetValue(form, out _))
+                    LayoutScales.Add(form, new StrongBox<SizeF>(new SizeF(1, 1)));
+                return;
+            }
+
+            var ratio = new SizeF(newDims.Width / oldDims.Width, newDims.Height / oldDims.Height);
+            if (LayoutScales.TryGetValue(form, out StrongBox<SizeF> total))
+                total.Value = new SizeF(total.Value.Width * ratio.Width, total.Value.Height * ratio.Height);
+            else
+                LayoutScales.Add(form, new StrongBox<SizeF>(ratio));
+
+            // SplitContainers keep their splitter position in pixels; scale it like everything else
+            foreach (SplitterState state in splitters)
+            {
+                SplitContainer split = state.Split;
+                float r = split.Orientation == Orientation.Vertical ? ratio.Width : ratio.Height;
+                try
+                {
+                    split.Panel1MinSize = (int)(state.Min1 * r);
+                    split.Panel2MinSize = (int)(state.Min2 * r);
+                    int distance = split.FixedPanel == FixedPanel.Panel2
+                        ? Length(split) - split.SplitterWidth - (int)(state.Panel2 * r)
+                        : (int)(state.Panel1 * r);
+                    if (distance > 0 && distance < Length(split))
+                        split.SplitterDistance = distance;
+                }
+                catch (Exception)
+                {
+                    // panel too small for the scaled minimum sizes: keep the current position
+                }
+            }
+
+            if (KeepSizeForms.TryGetValue(form, out _))
+            {
+                if (form.WindowState == FormWindowState.Normal)
+                    form.Size = oldSize;
+                return;
+            }
+
+            if (form.Visible && form.WindowState == FormWindowState.Normal && form.Size != oldSize)
+            {
+                // grow around the old centre, staying on screen
+                Rectangle area = Screen.FromPoint(oldCenter).WorkingArea;
+                int width = Math.Min(form.Width, area.Width);
+                int height = Math.Min(form.Height, area.Height);
+                int x = Math.Max(area.Left, Math.Min(oldCenter.X - width / 2, area.Right - width));
+                int y = Math.Max(area.Top, Math.Min(oldCenter.Y - height / 2, area.Bottom - height));
+                form.Bounds = new Rectangle(x, y, width, height);
+            }
+        }
+
+        /// <summary>
+        /// Gives the control Segoe UI (instead of MS Sans Serif) at the chosen text size.
+        /// Only controls with their own font are changed; the rest inherit from their parent.
         /// </summary>
         private static void StyleFont(Control control)
         {
-            Font font = control.Font;
-            if (font.Name != "Microsoft Sans Serif" || Theme.UiFont.Name == font.Name)
-                return;
-
-            string key = font.Size + "|" + (int)font.Style + "|" + (int)font.Unit;
-            if (!UiFonts.TryGetValue(key, out Font replacement))
+            if (!BaseFonts.TryGetValue(control, out Font baseFont))
             {
-                replacement = new Font(Theme.UiFont.FontFamily, font.Size, font.Style, font.Unit);
-                UiFonts[key] = replacement;
+                bool ownFont = control is Form || control is ToolStrip || control.Parent == null ||
+                               !ReferenceEquals(control.Font, control.Parent.Font);
+                if (!ownFont)
+                    return;
+
+                baseFont = control.Font;
+                BaseFonts.Add(control, baseFont);
             }
-            control.Font = replacement;
+
+            Font target = ScaledFont(baseFont);
+            if (!control.Font.Equals(target))
+                control.Font = target;
         }
+
+        private static Font ScaledFont(Font baseFont)
+        {
+            bool replaceFamily = baseFont.Name == "Microsoft Sans Serif" && Theme.UiFont.Name != baseFont.Name;
+            float size = (float)Math.Round(baseFont.Size * Theme.Scale * 4) / 4;
+            if (!replaceFamily && Math.Abs(size - baseFont.Size) < 0.01f)
+                return baseFont;
+
+            string family = replaceFamily ? Theme.UiFont.Name : baseFont.Name;
+            string key = family + "|" + size + "|" + (int)baseFont.Style + "|" + (int)baseFont.Unit;
+            if (!UiFonts.TryGetValue(key, out Font font))
+            {
+                font = replaceFamily
+                    ? new Font(Theme.UiFont.FontFamily, size, baseFont.Style, baseFont.Unit)
+                    : new Font(baseFont.FontFamily, size, baseFont.Style, baseFont.Unit);
+                UiFonts[key] = font;
+            }
+            return font;
+        }
+
+        /// <summary>
+        /// Toolbar icons grow with the text size (16 px at 100 %)
+        /// </summary>
+        private static void StyleToolStripImages(ToolStrip toolStrip)
+        {
+            if (!BaseImageSizes.TryGetValue(toolStrip, out object boxed))
+            {
+                boxed = toolStrip.ImageScalingSize;
+                BaseImageSizes.Add(toolStrip, boxed);
+            }
+
+            var baseSize = (Size)boxed;
+            var target = new Size((int)Math.Round(baseSize.Width * Theme.Scale),
+                (int)Math.Round(baseSize.Height * Theme.Scale));
+            if (toolStrip.ImageScalingSize != target)
+                toolStrip.ImageScalingSize = target;
+        }
+
+        #endregion
 
         private static void StyleOne(Control control, bool firstPass)
         {
@@ -414,6 +619,7 @@ namespace WikiFunctions.Theming
             toolStrip.BackColor = toolStrip is ToolStripDropDown ? P.Popup : P.Window;
             SetForeColor(toolStrip, P.Text);
             StyleFont(toolStrip);
+            StyleToolStripImages(toolStrip);
 
             if (firstPass)
                 toolStrip.ItemAdded += (sender, e) =>

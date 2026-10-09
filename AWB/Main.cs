@@ -118,30 +118,6 @@ namespace AutoWikiBrowser
         { get; private set; }
 
         #region Constructor and MainForm load/resize
-        /// <summary>
-        /// Adds View > Theme with the light/dark/system/classic choices
-        /// </summary>
-        private void AddThemeMenu()
-        {
-            var themeMenu = new ToolStripMenuItem("T&heme");
-            foreach (ThemeMode mode in new[] { ThemeMode.System, ThemeMode.Light, ThemeMode.Dark, ThemeMode.Classic })
-            {
-                string text = mode == ThemeMode.System ? "Use &Windows setting" : "&" + mode;
-                var item = new ToolStripMenuItem(text) { Tag = mode };
-                item.Click += (sender, e) => Theme.SetMode((ThemeMode)((ToolStripItem)sender).Tag);
-                themeMenu.DropDownItems.Add(item);
-            }
-
-            themeMenu.DropDownOpening += (sender, e) =>
-            {
-                foreach (ToolStripMenuItem item in themeMenu.DropDownItems)
-                    item.Checked = (ThemeMode)item.Tag == Theme.Mode;
-            };
-
-            viewToolStripMenuItem.DropDownItems.Add(new ToolStripSeparator());
-            viewToolStripMenuItem.DropDownItems.Add(themeMenu);
-        }
-
         public MainForm()
         {
             CheckSettings();
@@ -157,7 +133,10 @@ namespace AutoWikiBrowser
             SplashScreen.SetProgress(1);
 
             InitializeComponent();
-            AddThemeMenu();
+            AddAppearanceMenus();
+            BuildResizableLayout();
+            Theme.KeepWindowSize(this);
+            Theme.Apply(this);
 
             SplashScreen.SetProgress(5);
             try
@@ -525,7 +504,8 @@ namespace AutoWikiBrowser
             set
             {
                 btnStop.Location = value ? new Point(220, 62) : new Point(156, 62);
-                btnStop.Size = value ? new Size(51, 23) : new Size(117, 23);
+                float scale = Theme.LayoutScale(this).Width;
+                btnStop.Size = new Size((int)((value ? 51 : 117) * scale), btnStop.Height);
 
                 btnFalsePositive.Visible = btntsFalsePositive.Visible = value;
             }
@@ -2307,41 +2287,6 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
         }
         #endregion
 
-        private void PanelShowHide()
-        {
-            if (panel1.Visible) panel1.Hide();
-            else panel1.Show();
-            showHidePanelToolStripMenuItem.Checked = panel1.Visible;
-
-            SetBrowserSize();
-        }
-
-        private Point _oldPosition;
-        private Size _oldSize;
-        private void ParametersShowHide()
-        {
-            enlargeEditAreaToolStripMenuItem.Checked = !enlargeEditAreaToolStripMenuItem.Checked;
-            if (listMaker.Visible)
-            {
-                btntsShowHideParameters.Image = Resources.Showhideparameters2;
-
-                _oldPosition = EditBoxTab.Location;
-                EditBoxTab.Location = new Point(listMaker.Location.X, listMaker.Location.Y - 17);
-
-                _oldSize = EditBoxTab.Size;
-                EditBoxTab.Size = new Size((EditBoxTab.Size.Width + MainTab.Size.Width + listMaker.Size.Width + 8), EditBoxTab.Size.Height);
-            }
-            else
-            {
-                btntsShowHideParameters.Image = Resources.Showhideparameters;
-
-                EditBoxTab.Location = _oldPosition;
-                EditBoxTab.Size = _oldSize;
-            }
-            listMaker.Visible = MainTab.Visible = !listMaker.Visible;
-            label8.Visible =  listMaker.Visible;
-        }
-
         private void UpdateStatusUI()
         {
             UpdateUserName();
@@ -2447,6 +2392,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             ExitQuestion dlg = null;
 
             Properties.Settings.Default.WindowState = WindowState;
+            SaveLayout();
 
             if (WindowState == FormWindowState.Normal)
             {
@@ -4601,26 +4547,6 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             GetDiff();
         }
 
-        private void SetBrowserSize()
-        {
-            if (toolStrip.Visible)
-            {
-                webBrowser.Location = new Point(webBrowser.Location.X, 48);
-                if (panel1.Visible)
-                    webBrowser.Height = panel1.Location.Y - 48;
-                else
-                    webBrowser.Height = StatusMain.Location.Y - 48;
-            }
-            else
-            {
-                webBrowser.Location = new Point(webBrowser.Location.X, 25);
-                if (panel1.Visible)
-                    webBrowser.Height = panel1.Location.Y - 25;
-                else
-                    webBrowser.Height = StatusMain.Location.Y - 25;
-            }
-        }
-
         private void enableTheToolbarToolStripMenuItem_Click(object sender, EventArgs e)
         {
             EnableToolBar = enableTheToolbarToolStripMenuItem.Checked;
@@ -4632,7 +4558,6 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             set
             {
                 toolStrip.Visible = enableTheToolbarToolStripMenuItem.Checked = value;
-                SetBrowserSize();
             }
         }
 

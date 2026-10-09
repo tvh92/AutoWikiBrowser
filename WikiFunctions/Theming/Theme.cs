@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
@@ -62,7 +61,11 @@ namespace WikiFunctions.Theming
             }
         }
 
-        private static string SettingsFile => Path.Combine(AwbDirs.UserData, "Theme.txt");
+        /// <summary>Text and layout size: 1 = 100 %, 1.5 = 150 % ...</summary>
+        public static float Scale { get; private set; } = 1f;
+
+        /// <summary>The sizes offered under View > Text size</summary>
+        public static readonly int[] ScalePercentages = { 100, 115, 125, 150, 175, 200 };
 
         /// <summary>
         /// Loads the saved mode and starts styling windows. Call once at startup, before creating forms.
@@ -73,6 +76,7 @@ namespace WikiFunctions.Theming
                 return;
 
             Mode = LoadMode();
+            Scale = Math.Max(100, Math.Min(300, UiSettings.GetInt("Scale", 100))) / 100f;
             UpdatePalette();
 
             CbtProc = OnCbt;
@@ -105,6 +109,40 @@ namespace WikiFunctions.Theming
             }
 
             RestyleAll();
+        }
+
+        /// <summary>
+        /// Changes the text size (in percent), saves it, and resizes all open windows
+        /// </summary>
+        public static void SetScale(int percent)
+        {
+            float scale = percent / 100f;
+            if (Math.Abs(scale - Scale) < 0.001f)
+                return;
+
+            Scale = scale;
+            UiSettings.SetInt("Scale", percent);
+            if (Enabled)
+                RestyleAll();
+        }
+
+        /// <summary>
+        /// Keeps a window's own size when the text size changes (for windows that remember their
+        /// size, such as the main window); its contents still scale
+        /// </summary>
+        public static void KeepWindowSize(Form form)
+        {
+            ControlStyler.KeepSize(form);
+        }
+
+        /// <summary>
+        /// How much the layout of the control's window has been scaled from its designed size
+        /// (text size combined with the wider Segoe UI font). (1, 1) when unscaled.
+        /// Use it for sizes that are hard-coded in code rather than set in the designer.
+        /// </summary>
+        public static SizeF LayoutScale(Control control)
+        {
+            return ControlStyler.LayoutScale(control);
         }
 
         /// <summary>
@@ -242,8 +280,7 @@ namespace WikiFunctions.Theming
         {
             try
             {
-                if (File.Exists(SettingsFile) &&
-                    Enum.TryParse(File.ReadAllText(SettingsFile).Trim(), true, out ThemeMode mode))
+                if (Enum.TryParse(UiSettings.Get("Theme", ""), true, out ThemeMode mode))
                     return mode;
             }
             catch (Exception)
@@ -256,14 +293,7 @@ namespace WikiFunctions.Theming
 
         private static void SaveMode(ThemeMode mode)
         {
-            try
-            {
-                File.WriteAllText(SettingsFile, mode.ToString());
-            }
-            catch (Exception)
-            {
-                // read-only profile: the choice just isn't remembered
-            }
+            UiSettings.Set("Theme", mode.ToString());
         }
     }
 }
