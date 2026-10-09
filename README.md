@@ -16,7 +16,12 @@ Its purpose is to replace the earlier dark-mode hack with a proper light/dark th
 
 Known gaps:
 
-- TODO: list what is still missing or broken (for example, which dialogs or plugins are not yet themed, and whether the full build and test suite pass).
+- Main window layout: "Find and replace" is clipped under the Advanced settings button, the Normal / Advanced / Template buttons overlap their group box, and the "Auto changes skip" label wraps awkwardly.
+- The "Make list" source and category inputs have a bright white border that does not fit the dark palette.
+- Preferences: the OK button is light grey while Cancel is dark, so the default-button styling is inconsistent. The dialog title bar is black against a dark grey body.
+- Preferences > Editing and saving: the seconds value box is very low contrast when disabled. Confirm once it is enabled.
+- Not yet checked in dark mode: the Site, Tools, Privacy and Alerts tabs, plugin windows, the diff view, the find and replace dialogs, and Classic mode.
+- The unit tests and CI have not been run against this branch, and there are no tests for the theme code.
 
 See https://en.wikipedia.org/wiki/Wikipedia:AutoWikiBrowser for more information.
 
