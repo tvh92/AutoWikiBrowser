@@ -26,6 +26,8 @@ namespace WikiFunctions.Theming
         public Color MutedText { get; private set; }
         public Color Border { get; private set; }
         public Color StrongBorder { get; private set; }
+        /// <summary>Outline of text boxes, lists and drop-downs</summary>
+        public Color InputBorder { get; private set; }
         public Color Accent { get; private set; }
         public Color AccentHover { get; private set; }
         public Color OnAccent { get; private set; }
@@ -67,6 +69,7 @@ namespace WikiFunctions.Theming
                 MutedText = Color.FromArgb(110, 110, 110),
                 Border = Color.FromArgb(219, 219, 219),
                 StrongBorder = Color.FromArgb(160, 160, 160),
+                InputBorder = Color.FromArgb(190, 190, 190),
                 Accent = accent,
                 AccentHover = Blend(accent, Color.White, 0.12),
                 OnAccent = ReadableTextOn(accent),
@@ -88,6 +91,30 @@ namespace WikiFunctions.Theming
             };
         }
 
+        /// <summary>
+        /// Light palette with the colours AWB used before theming, for Classic mode, so that
+        /// status colours, highlighting and syntax colouring look exactly as they always did
+        /// </summary>
+        internal static ThemePalette CreateClassic(Color accent)
+        {
+            ThemePalette p = CreateLight(accent);
+            p.Input = Color.White;
+            p.Text = Color.Black;
+            p.Success = Color.Green;
+            p.Danger = Color.Red;
+            p.Warning = Color.Tomato;
+            p.Highlight = Color.Yellow;
+            p.ErrorHighlight = Color.Tomato;
+            p.Processed = Color.GreenYellow;
+            p.SyntaxBlock = Color.LightGray;
+            p.SyntaxTemplateName = Color.DarkBlue;
+            p.SyntaxLink = Color.Blue;
+            p.SyntaxFile = Color.LightGreen;
+            p.SyntaxInterwiki = Color.Gray;
+            p.SyntaxComment = Color.PaleGoldenrod;
+            return p;
+        }
+
         internal static ThemePalette CreateDark(Color accent)
         {
             Color darkAccent = Blend(accent, Color.White, 0.35);
@@ -105,6 +132,7 @@ namespace WikiFunctions.Theming
                 MutedText = Color.FromArgb(150, 150, 150),
                 Border = Color.FromArgb(60, 60, 60),
                 StrongBorder = Color.FromArgb(110, 110, 110),
+                InputBorder = Color.FromArgb(84, 84, 84),
                 Accent = darkAccent,
                 AccentHover = Blend(darkAccent, Color.White, 0.12),
                 OnAccent = ReadableTextOn(darkAccent),
@@ -138,9 +166,7 @@ namespace WikiFunctions.Theming
                     if (key?.GetValue("AccentColor") is int abgr)
                     {
                         Color color = Color.FromArgb(abgr & 0xFF, (abgr >> 8) & 0xFF, (abgr >> 16) & 0xFF);
-                        // very light or very dark accents make poor button fills
-                        float brightness = color.GetBrightness();
-                        if (brightness > 0.15f && brightness < 0.85f)
+                        if (IsUsableAccent(color))
                             return color;
                     }
                 }
@@ -150,7 +176,20 @@ namespace WikiFunctions.Theming
                 // no access to the registry: fall through to the default
             }
 
-            return Color.FromArgb(0, 103, 192);
+            return DefaultAccent;
+        }
+
+        /// <summary>Accent used when the Windows one cannot be read or is unsuitable</summary>
+        public static readonly Color DefaultAccent = Color.FromArgb(0, 103, 192);
+
+        /// <summary>
+        /// False for accents that make poor button fills: very light, very dark, or grey ones
+        /// (a grey accent makes the default button look disabled next to the others)
+        /// </summary>
+        public static bool IsUsableAccent(Color color)
+        {
+            float brightness = color.GetBrightness();
+            return brightness > 0.15f && brightness < 0.85f && color.GetSaturation() >= 0.25f;
         }
 
         /// <summary>

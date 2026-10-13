@@ -32,7 +32,7 @@ namespace WikiFunctions.Theming
         private static Font mUiFont;
 
         /// <summary>Colours currently in use. Never null.</summary>
-        public static ThemePalette Current { get; private set; } = ThemePalette.CreateLight(ThemePalette.ReadAccentColor());
+        public static ThemePalette Current { get; private set; } = ThemePalette.CreateClassic(ThemePalette.ReadAccentColor());
 
         /// <summary>The mode chosen by the user</summary>
         public static ThemeMode Mode { get; private set; } = ThemeMode.System;
@@ -155,6 +155,26 @@ namespace WikiFunctions.Theming
                 ControlStyler.Style(control, true);
         }
 
+        /// <summary>
+        /// A &lt;style&gt; block that gives an HTML page shown in AWB's browser (e.g. a preview)
+        /// a dark page background, text and links in dark mode; empty otherwise.
+        /// Put it after the page's own styles.
+        /// </summary>
+        public static string HtmlPageStyles
+        {
+            get
+            {
+                if (!IsDark)
+                    return "";
+
+                ThemePalette p = Current;
+                return "<style type='text/css'>html, body {background:" + ColorTranslator.ToHtml(p.Input) +
+                       " !important; color:" + ColorTranslator.ToHtml(p.Text) + " !important;" +
+                       ControlStyler.DarkScrollbars + "} a {color:" + ColorTranslator.ToHtml(p.Link) +
+                       ";} a:visited {color:" + ColorTranslator.ToHtml(p.VisitedLink) + ";}</style>";
+            }
+        }
+
         internal static bool IsPaletteColor(Color color)
         {
             return PaletteArgb.Contains(color.ToArgb());
@@ -181,7 +201,7 @@ namespace WikiFunctions.Theming
 
             Enabled = Mode != ThemeMode.Classic;
             bool dark1 = Mode == ThemeMode.Dark || (Mode == ThemeMode.System && WindowsUsesDarkApps());
-            Current = dark1 ? dark : light;
+            Current = !Enabled ? ThemePalette.CreateClassic(accent) : dark1 ? dark : light;
         }
 
         private static void RestyleAll()

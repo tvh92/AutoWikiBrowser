@@ -48,6 +48,9 @@ namespace WikiFunctions.Theming
             {
                 // AWB uses a coloured button to signal state (e.g. Find highlighting a match)
                 fill = button.BackColor;
+                // pale signal colours (e.g. the light green Save button) glare on a dark window
+                if (P.IsDark && fill.GetBrightness() > 0.7f)
+                    fill = ThemePalette.Blend(fill, P.Button, 0.6);
                 border = ThemePalette.Blend(fill, Color.Black, 0.2);
                 text = ThemePalette.ReadableTextOn(fill);
             }

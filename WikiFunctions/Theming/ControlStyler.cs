@@ -331,7 +331,13 @@ namespace WikiFunctions.Theming
             {
                 case Form form:
                     form.BackColor = P.Window;
-                    WhenHandleReady(form, firstPass, () => ThemeNative.SetDarkTitleBar(form.Handle, P.IsDark));
+                    WhenHandleReady(form, firstPass, () =>
+                    {
+                        ThemeNative.SetDarkTitleBar(form.Handle, P.IsDark);
+                        // Windows 11: match the title bar to the window instead of near-black
+                        ThemeNative.SetCaptionColors(form.Handle, P.IsDark ? P.Window : Color.Empty,
+                            P.IsDark ? P.Text : Color.Empty);
+                    });
                     break;
 
                 case TextBoxBase textBox:
@@ -342,14 +348,22 @@ namespace WikiFunctions.Theming
                         ThemeNative.SendMessage(textBox.Handle, ThemeNative.EM_SETBKGNDCOLOR, IntPtr.Zero,
                             (IntPtr)ColorTranslator.ToWin32(P.Input));
                     if (firstPass)
+                    {
                         QueueDisabledTextOverlay(textBox);
+                        if (!(textBox.Parent is ToolStrip) && !(textBox.Parent is UpDownBase))
+                            InputBorderPainter.Attach(textBox);
+                    }
                     UpdateDisabledTextOverlay(textBox);
+                    RedrawFrame(textBox);
                     break;
 
                 case ListBox listBox:
                     listBox.BackColor = P.Input;
                     SetDarkBorder(listBox, dark);
                     WhenHandleReady(listBox, firstPass, () => ApplyNativeTheme(listBox));
+                    if (firstPass)
+                        InputBorderPainter.Attach(listBox);
+                    RedrawFrame(listBox);
                     break;
 
                 case TreeView treeView:
@@ -357,12 +371,18 @@ namespace WikiFunctions.Theming
                     treeView.LineColor = P.StrongBorder;
                     SetDarkBorder(treeView, dark);
                     WhenHandleReady(treeView, firstPass, () => ApplyNativeTheme(treeView));
+                    if (firstPass)
+                        InputBorderPainter.Attach(treeView);
+                    RedrawFrame(treeView);
                     break;
 
                 case ListView listView:
                     listView.BackColor = P.Input;
                     SetDarkBorder(listView, dark);
                     WhenHandleReady(listView, firstPass, () => ApplyListViewTheme(listView));
+                    if (firstPass)
+                        InputBorderPainter.Attach(listView);
+                    RedrawFrame(listView);
                     break;
 
                 case DataGridView grid:
@@ -382,6 +402,9 @@ namespace WikiFunctions.Theming
                     }
                     WhenHandleReady(comboBox, firstPass, () =>
                         ThemeNative.SetTheme(comboBox.Handle, P.IsDark ? "DarkMode_CFD" : null));
+                    if (firstPass && !(comboBox.Parent is ToolStrip))
+                        InputBorderPainter.Attach(comboBox);
+                    comboBox.Invalidate();
                     break;
 
                 case NumericUpDown numeric:
@@ -538,6 +561,12 @@ namespace WikiFunctions.Theming
                 };
             if (control.IsHandleCreated)
                 action();
+        }
+
+        private static void RedrawFrame(Control control)
+        {
+            if (control.IsHandleCreated)
+                ThemeNative.RedrawFrame(control.Handle);
         }
 
         private static void ApplyNativeTheme(Control control)
@@ -806,7 +835,36 @@ namespace WikiFunctions.Theming
 
         // Windows paints disabled (and empty read-only) edit controls with the light system colour,
         // ignoring BackColor. In dark mode a label is shown on top instead; the edit control itself
-        // is never enabled or otherwise changed.
+        // is never enabled or otherwise changed. The edit box inside a NumericUpDown is covered
+        // together with its arrows, since the up-down control's own frame is drawn light too.
+
+        /// <summary>
+        /// Paints its text itself: as a child of a disabled container a plain Label would be
+        /// disabled too and drawn in the etched grey that is unreadable on dark backgrounds
+        /// </summary>
+        private sealed class DisabledTextOverlay : Label
+        {
+            internal TextFormatFlags Flags;
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                Graphics g = e.Graphics;
+                g.Clear(P.Input);
+                using (var pen = new Pen(P.InputBorder))
+                    g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+
+                var text = new Rectangle(3, 3, Math.Max(0, Width - 6), Math.Max(0, Height - 5));
+                TextRenderer.DrawText(g, Text, Font, text, P.MutedText, Flags);
+            }
+        }
+
+        /// <summary>
+        /// The control the overlay covers: the text box, or the NumericUpDown around it
+        /// </summary>
+        private static Control OverlayHost(TextBoxBase textBox)
+        {
+            return textBox.Parent is UpDownBase upDown ? (Control)upDown : textBox;
+        }
 
         private static void QueueDisabledTextOverlay(TextBoxBase textBox)
         {
@@ -820,38 +878,43 @@ namespace WikiFunctions.Theming
             textBox.ReadOnlyChanged += (sender, e) => UpdateDisabledTextOverlay(textBox);
             textBox.LocationChanged += (sender, e) => UpdateDisabledTextOverlay(textBox);
             textBox.SizeChanged += (sender, e) => UpdateDisabledTextOverlay(textBox);
+
+            if (textBox.Parent is UpDownBase upDown)
+            {
+                upDown.ParentChanged += (sender, e) => EnsureOverlay(textBox);
+                upDown.LocationChanged += (sender, e) => UpdateDisabledTextOverlay(textBox);
+                upDown.SizeChanged += (sender, e) => UpdateDisabledTextOverlay(textBox);
+            }
         }
 
         private static bool NeedsOverlay(TextBoxBase textBox)
         {
-            return Theme.IsDark && textBox.Visible &&
-                   (!textBox.Enabled || (textBox.ReadOnly && textBox.TextLength == 0));
+            return Theme.IsDark && OverlayHost(textBox).Visible &&
+                   (!textBox.Enabled || (textBox.ReadOnly && textBox.TextLength == 0 && !(textBox.Parent is UpDownBase)));
         }
 
         private static void EnsureOverlay(TextBoxBase textBox)
         {
-            if (textBox.IsDisposed || textBox.Parent == null || textBox.Parent is ToolStrip)
+            Control host = OverlayHost(textBox);
+            if (textBox.IsDisposed || host.Parent == null || host.Parent is ToolStrip)
                 return;
 
             if (DisabledTextOverlays.TryGetValue(textBox, out Label overlay))
             {
-                if (overlay.Parent != textBox.Parent && !overlay.IsDisposed)
-                    textBox.Parent.Controls.Add(overlay);
+                if (overlay.Parent != host.Parent && !overlay.IsDisposed)
+                    host.Parent.Controls.Add(overlay);
                 return;
             }
 
-            overlay = new Label
+            overlay = new DisabledTextOverlay
             {
                 AutoSize = false,
-                BorderStyle = BorderStyle.FixedSingle,
-                Padding = new Padding(1, 2, 1, 1),
-                TextAlign = ContentAlignment.TopLeft,
                 UseMnemonic = false,
                 Tag = OverlayTag,
                 Visible = false
             };
             DisabledTextOverlays.Add(textBox, overlay);
-            textBox.Parent.Controls.Add(overlay);
+            host.Parent.Controls.Add(overlay);
         }
 
         private static void UpdateDisabledTextOverlay(TextBoxBase textBox)
@@ -870,18 +933,34 @@ namespace WikiFunctions.Theming
             bool show = NeedsOverlay(textBox);
             if (show)
             {
-                overlay.Bounds = textBox.Bounds;
-                overlay.Anchor = textBox.Anchor;
+                Control host = OverlayHost(textBox);
+                overlay.Bounds = host.Bounds;
+                overlay.Anchor = host.Anchor;
                 overlay.Font = textBox.Font;
-                overlay.BackColor = P.Input;
-                overlay.ForeColor = P.MutedText;
                 overlay.Text = textBox is TextBox plain && plain.UseSystemPasswordChar
                     ? new string('●', plain.TextLength)
                     : textBox.Text;
+                ((DisabledTextOverlay)overlay).Flags = OverlayTextFlags(textBox);
+                overlay.Invalidate();
             }
             overlay.Visible = show;
             if (show)
                 overlay.BringToFront();
+        }
+
+        private static TextFormatFlags OverlayTextFlags(TextBoxBase textBox)
+        {
+            TextFormatFlags flags = TextFormatFlags.Top | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding;
+            flags |= textBox.Multiline ? TextFormatFlags.WordBreak : TextFormatFlags.EndEllipsis | TextFormatFlags.SingleLine;
+
+            HorizontalAlignment align = (textBox as TextBox)?.TextAlign ?? HorizontalAlignment.Left;
+            if (textBox.RightToLeft == RightToLeft.Yes)
+                flags |= TextFormatFlags.RightToLeft;
+            if (align == HorizontalAlignment.Center)
+                flags |= TextFormatFlags.HorizontalCenter;
+            else if ((align == HorizontalAlignment.Right) != (textBox.RightToLeft == RightToLeft.Yes))
+                flags |= TextFormatFlags.Right;
+            return flags;
         }
 
         #endregion

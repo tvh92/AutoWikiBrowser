@@ -112,6 +112,7 @@
     <Compile Include="Diff\UnifiedDiff.cs" />
     <Compile Include="Theming\ButtonPainter.cs" />
     <Compile Include="Theming\ControlStyler.cs" />
+    <Compile Include="Theming\InputBorderPainter.cs" />
     <Compile Include="Theming\ModernToolStripRenderer.cs" />
     <Compile Include="Theming\Theme.cs" />
     <Compile Include="Theming\ThemeNative.cs" />
