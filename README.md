@@ -18,7 +18,7 @@ Fixed since the first review, but only compile-checked so far (not yet looked at
 
 - Main window layout: the "Find and replace" check box and the Normal / Advanced / Template buttons are now laid out from their real sizes, so the buttons no longer cover the check box. "Auto changes skip options" is split over two lines on purpose.
 - Text boxes, lists and drop-downs (e.g. the "Make list" source and category inputs) get a dark outline instead of the native bright white border, and an accent-coloured outline while focused.
-- Preferences: a grey Windows accent colour is no longer used, because a grey OK button looked disabled next to Cancel. The default blue is used instead. On Windows 11 the title bar matches the window colour.
+- Preferences: a grey Windows accent colour is no longer used, because a grey OK button looked disabled next to Cancel. The default blue is used instead. Text on accent-coloured buttons is now picked by measured contrast, so the dark-mode default button gets dark text. On Windows 11 the title bar matches the window colour.
 - Disabled text boxes and number boxes (e.g. the autosave seconds box) are drawn with readable grey text, not the etched system grey.
 - Preview pages get a dark page background. The About box drops its light green background in dark mode. The Find button no longer turns light grey after a search, and pale button colours (e.g. Save) are toned down in dark mode.
 - Classic mode uses AWB's original status, highlight and syntax colours again.

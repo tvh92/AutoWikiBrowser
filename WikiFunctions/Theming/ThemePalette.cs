@@ -208,8 +208,28 @@ namespace WikiFunctions.Theming
         /// </summary>
         public static Color ReadableTextOn(Color background)
         {
-            double luminance = (0.299 * background.R + 0.587 * background.G + 0.114 * background.B) / 255;
-            return luminance > 0.6 ? Color.FromArgb(20, 20, 20) : Color.White;
+            Color dark = Color.FromArgb(20, 20, 20);
+            return ContrastRatio(Color.White, background) >= ContrastRatio(dark, background) ? Color.White : dark;
+        }
+
+        /// <summary>
+        /// WCAG contrast ratio between two colours, from 1 (none) to 21 (black on white)
+        /// </summary>
+        public static double ContrastRatio(Color a, Color b)
+        {
+            double la = RelativeLuminance(a), lb = RelativeLuminance(b);
+            return (Math.Max(la, lb) + 0.05) / (Math.Min(la, lb) + 0.05);
+        }
+
+        private static double RelativeLuminance(Color color)
+        {
+            return 0.2126 * Linear(color.R) + 0.7152 * Linear(color.G) + 0.0722 * Linear(color.B);
+        }
+
+        private static double Linear(int channel)
+        {
+            double v = channel / 255.0;
+            return v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
         }
     }
 }

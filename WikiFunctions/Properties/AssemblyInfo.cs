@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following 
@@ -35,3 +36,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyFileVersion("6.5.0.0")]
 
 [assembly: CLSCompliant(true)]
+
+// Lets the unit tests call internal helpers such as ThemePalette.CreateDark
+[assembly: InternalsVisibleTo("UnitTests")]
