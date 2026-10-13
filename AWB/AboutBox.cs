@@ -31,6 +31,10 @@ internal sealed partial class AboutBox : Form
         {
             InitializeComponent();
 
+            // the light green background is unreadable under the dark theme's light text
+            if (WikiFunctions.Theming.Theme.IsDark)
+                BackColor = System.Drawing.SystemColors.Control;
+
             lblAWBVersion.Text = "Version " + Program.VersionString;
             lblRevision.Text = "SVN " + Variables.Revision;
             txtWarning.Text = WikiFunctions.Controls.AboutBox.GetDetailedMessage(Assembly.GetExecutingAssembly());

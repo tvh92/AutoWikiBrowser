@@ -212,6 +212,75 @@ namespace AutoWikiBrowser
         }
 
         /// <summary>
+        /// The Options tab was laid out for MS Sans Serif. Segoe UI is wider, so the check boxes
+        /// grow into the buttons beside them. Re-arranges those rows from the controls' real sizes.
+        /// Called after the window is styled and again after every theme or text size change.
+        /// </summary>
+        private void FitOptionsLayout()
+        {
+            if (!Theme.Enabled)
+                return;
+
+            SizeF scale = Theme.LayoutScale(this);
+            int margin = (int)Math.Round(6 * scale.Width);
+            int gap = (int)Math.Round(6 * scale.Width);
+
+            // "Find and replace" with the Normal / Advanced / Template buttons to its right
+            FitButtonColumn(groupBox1, chkFindandReplace,
+                new[] { btnMoreFindAndReplce, btnFindAndReplaceAdvanced, btnSubst }, margin, gap, scale);
+
+            // the automatic changes check boxes with the "Auto changes skip options" button to their right
+            btnMoreSkip.Text = "Auto changes" + Environment.NewLine + "skip options";
+            FitButtonColumn(groupBox6, null, new[] { btnMoreSkip }, margin, gap, scale,
+                chkAutoTagger, chkGeneralFixes, chkUnicodifyWhole);
+        }
+
+        /// <summary>
+        /// Puts <paramref name="buttons"/> in a column at the right of <paramref name="box"/>, wide
+        /// enough for their text, and keeps the controls to their left from running under them
+        /// (shortening <paramref name="shrinkable"/> with an ellipsis if there is not enough room)
+        /// </summary>
+        private static void FitButtonColumn(GroupBox box, CheckBox shrinkable, Button[] buttons, int margin, int gap,
+            SizeF scale, params Control[] leftControls)
+        {
+            int needed = 0;
+            foreach (Button button in buttons)
+            {
+                foreach (string line in button.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None))
+                    needed = Math.Max(needed, TextRenderer.MeasureText(line, button.Font).Width);
+            }
+            needed += (int)Math.Round(16 * scale.Width);
+
+            // right edge of what is to the left of the buttons, at its natural width
+            int leftEdge = 0;
+            foreach (Control control in leftControls)
+                leftEdge = Math.Max(leftEdge, control.Left + control.GetPreferredSize(Size.Empty).Width);
+            if (shrinkable != null)
+                leftEdge = Math.Max(leftEdge, shrinkable.Left + shrinkable.GetPreferredSize(Size.Empty).Width);
+
+            // buttons as wide as their text needs, but not over the controls to their left;
+            // if that leaves them too narrow, the shrinkable check box gives way
+            int right = box.ClientSize.Width - margin;
+            int left = Math.Max(leftEdge + gap, right - needed);
+            int minWidth = Math.Min(needed, (int)Math.Round(80 * scale.Width));
+            if (shrinkable != null && right - left < minWidth)
+                left = Math.Max(shrinkable.Left + gap, right - minWidth);
+
+            foreach (Button button in buttons)
+                button.Bounds = new Rectangle(left, button.Top, Math.Max(0, right - left), button.Height);
+
+            if (shrinkable != null)
+            {
+                int room = left - gap - shrinkable.Left;
+                bool fits = shrinkable.GetPreferredSize(Size.Empty).Width <= room;
+                shrinkable.AutoEllipsis = !fits;
+                shrinkable.AutoSize = fits;
+                if (!fits)
+                    shrinkable.Width = room;
+            }
+        }
+
+        /// <summary>
         /// Adds View > Theme and View > Text size
         /// </summary>
         private void AddAppearanceMenus()

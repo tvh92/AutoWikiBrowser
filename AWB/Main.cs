@@ -137,6 +137,8 @@ namespace AutoWikiBrowser
             BuildResizableLayout();
             Theme.KeepWindowSize(this);
             Theme.Apply(this);
+            FitOptionsLayout();
+            Theme.Changed += (sender, e) => FitOptionsLayout();
 
             SplashScreen.SetProgress(5);
             try
@@ -2007,7 +2009,9 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
                 webBrowser.Document.OpenNew(false);
                 webBrowser.Document.Write("<html><head>"
                                           + sender.HtmlHeaders
-                                          + "</head><body style=\"background:white; margin:10px; text-align:left;\">"
+                                          + Theme.HtmlPageStyles
+                                          + "</head><body style=\"" + (Theme.IsDark ? "" : "background:white; ")
+                                          + "margin:10px; text-align:left;\">"
                                           + result
                                           + "</body></html>"
                                          );
@@ -3041,7 +3045,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             btnFind.Enabled = txtFind.TextLength > 0;
 
             if (!btnFind.Enabled)
-                btnFind.BackColor = SystemColors.ButtonFace;
+                btnFind.BackColor = Theme.Enabled ? Theme.Current.Button : SystemColors.ButtonFace;
         }
 
         private void txtEdit_TextChanged(object sender, EventArgs e)
@@ -3427,7 +3431,7 @@ font-size: 150%;'>No changes</h2><p>Press the ""Skip"" button below to skip to t
             if (btnFind.Enabled && txtEdit.FindAll(txtFind.Text, chkFindRegex.Checked, chkFindCaseSensitive.Checked, TheArticle.Name).Any())
                 btnFind.BackColor = Theme.Current.Highlight;
             else
-                btnFind.BackColor = SystemColors.ButtonFace;
+                btnFind.BackColor = Theme.Enabled ? Theme.Current.Button : SystemColors.ButtonFace;
         }
 
         #endregion
